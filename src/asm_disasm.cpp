@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iomanip>
+#include <map>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string.hpp>
 #include "kyiv.h"

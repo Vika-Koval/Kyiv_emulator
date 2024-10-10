@@ -203,7 +203,7 @@ struct Kyiv_t{
     };
 
     Kyiv_t() {
-        std::string rom_file = "../ROM.txt";
+        std::string rom_file = "../mem/ROM.txt";
         std::ifstream infile(rom_file);
         std::string line;
         while (std::getline(infile, line)) {

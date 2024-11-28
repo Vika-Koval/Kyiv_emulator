@@ -239,8 +239,10 @@ int disassembly_text(const std::string file_from, const std::string file_to) {
 //                            result.append(it.first);
 //                    }
 //                }
-            if (result.empty()) {
-                assert("Shouldn't be here!");
+                    if (result.empty()) {
+                        std::cout << "empty" << std::endl;
+                        assert(false);
+                    }
             }
             program[address] = result;
         }

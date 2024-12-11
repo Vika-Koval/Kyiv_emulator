@@ -536,7 +536,7 @@ void Kyiv_t::opcode_arythm(const addr3_t& addr3, opcode_t opcode){
         uint16_t leftmost = leftmost_one(res_mul);
 
         if (opcode == arythm_operations_t::opcode_mul_round) {
-            res_mul += 1ULL << 41;
+            res_mul += 1ULL << 39;
         }
         res_mul = res_mul >> 40;
 

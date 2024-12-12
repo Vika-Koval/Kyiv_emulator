@@ -117,21 +117,26 @@ constexpr addr3_t shift_addr3_byA(addr3_t addr3, uint64_t offset, word_t w){
 //! Returns: True -- continue, false -- ситуація останову.
 bool Kyiv_t::execute_opcode(){
     K_reg = kmem.read_memory(C_reg);
-    std::cout << K_reg << std::endl;
+    std::cout << "Our command(binary): "<<std::bitset<41>(K_reg) << std::endl;
+    std::cout << "Our command(Kyive): "<<K_reg << std::endl;
     opcode_t opcode = word_to_opcode(K_reg);
+    std::cout<<"Opcode: "<<opcode<<std::endl;
 
     if (opcode == 0) {
         ++C_reg;
-
+        std::cout << "No operation (opcode 0). Moving to the next command." << std::endl;
     }
 //    std::cout << "opcode: " << opcode << std::endl;
     addr3_t addr3 = word_to_addr3(K_reg); // Парі команд потрібна
     std::cout << "A_reg_2: " << A_reg << std::endl;
-    std::cout << "Cycle_reg" << Loop_reg << std::endl;
+    std::cout << "Cycle_reg: " << Loop_reg << std::endl;
     addr3_t addr3_shifted = shift_addr3_byA(addr3, A_reg, K_reg); // Решта використовують цю змінну
 
-    std::cout << "source 1: " << addr3_shifted.source_1 << std::endl;
-    std::cout << "source 2: " << addr3_shifted.source_2 << std::endl;
+    std::cout << "Shifted addresses (source 1: " << addr3_shifted.source_1
+          << ", source 2: " << addr3_shifted.source_2
+          << ", destination: " << addr3_shifted.destination << ")" << std::endl;
+    // std::cout << "source 1: " << addr3_shifted.source_1 << std::endl;
+    // std::cout << "source 2: " << addr3_shifted.source_2 << std::endl;
 
     disassembly(K_reg, kmem, addr3_shifted);
     //! Ймовірно, потім це діло треба буде відрефакторити -- відчуваю, но де буде проблема - поки не знаю :+)
@@ -357,7 +362,41 @@ bool Kyiv_t::execute_opcode(){
                 counter ++;
             }
 
-            magnetic_drum.close();
+            magnetic_druelse if (mode == "assembly_mode") {
+        if (argc != 3) {
+            std::cerr << "Usage: " << argv[0] << " assembly_mode <file>" << std::endl;
+            return -1;
+        }
+
+        std::string inputFile = argv[2];
+        std::string outputFile = "../tempAsm.txt"; // Temporary output file
+
+        // Step 1: Parse Assembly File
+        Assembly assembler(std::ref(machine));
+        if (assembler.read_file(inputFile, /* numerate */ false) != 0) {
+            std::cerr << "Error: Failed to parse the assembly file." << std::endl;
+            return -1;
+        }
+
+        // Step 2: Execute the Commands
+        std::cout << "Executing parsed assembly..." << std::endl;
+        if (!assembler.execute()) { // Assuming `Assembly::execute` runs the commands
+            std::cerr << "Error: Failed to execute assembly instructions." << std::endl;
+            return -1;
+        }
+
+        // Step 3: Output the Results
+        std::ifstream output(outputFile);
+        if (output.is_open()) {
+            std::string line;
+            while (std::getline(output, line)) {
+                std::cout << line << std::endl; // Display the execution results
+            }
+            output.close();
+        } else {
+            std::cerr << "Error: Could not open output file for results." << std::endl;
+        }
+    }m.close();
         }
             break;
 
@@ -420,32 +459,67 @@ void Kyiv_t::opcode_arythm(const addr3_t& addr3, opcode_t opcode){
     //! (зверталося до байта add mod 2^11, в сенсі), але точно не знаю.
     signed_word_t sign1 = (is_negative(kmem.read_memory(addr3.source_1)) ? -1 : 1);
     signed_word_t sign2 = (is_negative(kmem.read_memory(addr3.source_2)) ? -1 : 1);
-    std::cout << "sign 2" << sign2 << std::endl;
-    std::cout << "gfuigfalhf: " << addr3.source_2 << std::endl;
+    // std::cout << "sign 2" << sign2 << std::endl;
+    // std::cout << "gfuigfalhf: " << addr3.source_2 << std::endl;
     word_t abs_val1 = static_cast<signed_word_t>(kmem.read_memory(addr3.source_1) & mask_40_bits);
-    word_t abs_val2 = static_cast<signed_word_t>(kmem.read_memory(addr3.source_2) & mask_40_bits);;
+    word_t abs_val2 = static_cast<signed_word_t>(kmem.read_memory(addr3.source_2) & mask_40_bits);
     signed_word_t res = sign1 * (signed_word_t) abs_val1;
 
     signed_word_t res_for_norm;
     mul_word_t res_mul;
     uint16_t power = 40 - leftmost_one(abs_val1) -1;
 
-    std::cout << sign1 * (signed_word_t) abs_val1 << "gifhdaflvdjasbh\t" << sign2 * (signed_word_t) abs_val2 << std::endl;
+    // std::cout << sign1 * (signed_word_t) abs_val1 << "gifhdaflvdjasbh\t" << sign2 * (signed_word_t) abs_val2 << std::endl;
+    std::cout << "Arithmetic operation: " << opcode
+          << "\nSource 1: " << addr3.source_1 << " (value Kyive: " << sign1 * (signed_word_t)abs_val1 << ")"<< " (value decimal: " << sign1 * ((signed_word_t)abs_val1*pow(2, -40)) << ")"
+          << "\nSource 2: " << addr3.source_2 << " (value Kyive: " << sign2 * (signed_word_t)abs_val2 << ")"<< " (value decimal: " << sign2 * ((signed_word_t)abs_val2*pow(2, -40)) << ")\n";
     switch(opcode){
         case arythm_operations_t::opcode_add:
             res += sign2 * (signed_word_t) abs_val2;
+            std::cout << "Operation: Addition." << "\n";
+            if (sign2==1){
+                std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " + " << sign2 * (signed_word_t) abs_val2 << " = " << res << std::endl;
+                std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " + " << sign2 * ((signed_word_t) abs_val2 * pow(2, -40)) << " = " << res * pow(2, -40) << std::endl;
+            } else {
+                std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " + " << "("<<sign2 * (signed_word_t) abs_val2 <<")"<< " = " << res << std::endl;
+                std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " + "<< "(" << sign2 * ((signed_word_t) abs_val2 * pow(2, -40))<<")" << " = " << res * pow(2, -40) << std::endl;
+            }
             break;
         case arythm_operations_t::opcode_sub:
             res -= sign2 * (signed_word_t) abs_val2;
+            std::cout << "Operation: Subtraction." << "\n";
+            if (sign2 == 1) {
+                std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " - " << sign2 * (signed_word_t) abs_val2 << " = " << res << std::endl;
+                std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " - " << sign2 * ((signed_word_t) abs_val2 * pow(2, -40)) << " = " << res * pow(2, -40) << std::endl;
+            } else {
+                std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " - " << "(" << sign2 * (signed_word_t) abs_val2 << ")" << " = " << res << std::endl;
+                std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " - " << "(" << sign2 * ((signed_word_t) abs_val2 * pow(2, -40)) << ")" << " = " << res * pow(2, -40) << std::endl;
+            }
             break;
         case arythm_operations_t::opcode_addcmd:
             res += (signed_word_t) abs_val2;
+            std::cout << "Operation: Addition of commands." << "\n";
+            std::cout<<"Add first number to second without sign: "<<"\n";
+            std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " + " <<  (signed_word_t) abs_val2 << " = " << res << std::endl;
+            std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " + " <<  ((signed_word_t) abs_val2 * pow(2, -40)) << " = " << res * pow(2, -40) << std::endl;
             break;
         case arythm_operations_t::opcode_subabs:
             res = (signed_word_t) abs_val1 - (signed_word_t) abs_val2;
+            std::cout << "Operation: Modulus substraction" << "\n";
+            std::cout << "Kyive: " << "|"<<sign1 * (signed_word_t) abs_val1 << "|"<< " - " << "|" << sign2 * (signed_word_t) abs_val2 << "|" << " = " << res << std::endl;
+            std::cout << "Decimal: " << "|"<< sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << "|"<< " - " << "|"<< sign2 * ((signed_word_t) abs_val2 * pow(2, -40))<< "|"<< " = " << res * pow(2, -40) << std::endl;
             break;
         case arythm_operations_t::opcode_addcyc:
             res += sign2 * (signed_word_t) abs_val2; // Те ж, що і для opcode_add, але подальша обробка інша
+            std::cout << "Operation: Cyclical addition." << "\n";
+            if (sign2==1){
+                std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " + " << sign2 * (signed_word_t) abs_val2 << " = " << res << std::endl;
+                std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " + " << sign2 * ((signed_word_t) abs_val2 * pow(2, -40)) << " = " << res * pow(2, -40) << std::endl;
+            } else {
+                std::cout << "Kyive: " << sign1 * (signed_word_t) abs_val1 << " + " << "("<<sign2 * (signed_word_t) abs_val2 <<")"<< " = " << res << std::endl;
+                std::cout << "Decimal: " << sign1 * ((signed_word_t) abs_val1 * pow(2, -40)) << " + "<< "(" << sign2 * ((signed_word_t) abs_val2 * pow(2, -40))<<")" << " = " << res * pow(2, -40) << std::endl;
+            }
+            std::cout<<"In the end we check whether our result was negative, and add - in case if yes"<<std::endl;
             break;
         case arythm_operations_t::opcode_mul: [[fallthrough]];
         case arythm_operations_t::opcode_mul_round:
@@ -500,7 +574,16 @@ void Kyiv_t::opcode_arythm(const addr3_t& addr3, opcode_t opcode){
         }
     } else if(opcode == arythm_operations_t::opcode_addcmd){
         kmem.write_memory(addr3.destination, static_cast<uint64_t>(res) & mask_40_bits);
+        if (res<0) {
+            std::cout<<"Since our result is negative,we will add 1 to our result:"<<"1 +"<<"("<<res<<")"<<" = "<<(kmem.read_memory(addr3.destination) & mask_40_bits)<<std::endl;
+        }
+        std::cout << "Result written to destination (without sign): "
+          << (kmem.read_memory(addr3.destination) & mask_40_bits)
+          << " (Decimal: " << word_to_number(kmem.read_memory(addr3.destination)) * pow(2, -40) << ")" << std::endl;
         kmem.write_memory(addr3.destination, kmem.read_memory(addr3.destination) | (kmem.read_memory(addr3.source_2) & mask_41_bit)); // Копіюємо біт знаку з source_2 // edited тут наче так має бути
+        std::cout << "Final result written to destination (with sign): "
+          << kmem.read_memory(addr3.destination)
+          << " (Decimal: " << word_to_number(kmem.read_memory(addr3.destination)) * pow(2, -40) << ")" << std::endl;
     } else if(opcode == arythm_operations_t::opcode_addcyc){
         //! TODO: Вияснити, а як ця команда функціонує.
         // "Отличается от обычного сложения лишь тем, что  в нем отсутствует блокировка при выходе
@@ -511,7 +594,6 @@ void Kyiv_t::opcode_arythm(const addr3_t& addr3, opcode_t opcode){
         // 2. Якщо додавання переносу до молодшого біту виникло переповнення, що далі?
         //    Так виглядає, що воно не може виникнути, але чи я не помилився? -- не може, десь через переніс буде 0
         bool is_negative = (res < 0);
-        // std::cout << (res) << std::endl;
         if (is_negative)
             res = -res;
         assert(res >= 0);
@@ -520,10 +602,20 @@ void Kyiv_t::opcode_arythm(const addr3_t& addr3, opcode_t opcode){
         if(res & mask_41_bit){
             res += 1; // Маємо перенос із знакового біту
         }
-
         kmem.write_memory(addr3.destination, static_cast<uint64_t>(res) & mask_40_bits);
+
+        std::cout<<"We will work with positive numbers"<<" (value Kyive: " << res << ")"<< " (value decimal: " << res*pow(2, -40) << ")"<<std::endl;
+        if (res*pow(2, -40)>1 ) {
+            std::cout<<"Our result out of range [-1,1]"<<std::endl;
+            std::cout<<"We need to sustruct 1 from our result Kyive:"<<res<<" - 1"<<" = "<< (kmem.read_memory(addr3.destination) & mask_40_bits)<<std::endl;
+            std::cout<<"We need to sustruct 1 from our result decimal:"<<res*pow(2, -40)<<" - 1"<<" = "<< (kmem.read_memory(addr3.destination) & mask_40_bits)*pow(2, -40)<<std::endl;
+        }
+        else {
+            std::cout<<"Our value belong to reange [-1,1], so it will stay unchanged"<<" (value Kyive: " << res << ")"<< " (value decimal: " << res*pow(2, -40) << ")"<<std::endl;
+        }
         if (is_negative)
             kmem.write_memory(addr3.destination, kmem.read_memory(addr3.destination) | mask_41_bit);
+
     } else if(opcode == arythm_operations_t::opcode_mul ||
               opcode == arythm_operations_t::opcode_mul_round
             ) {

@@ -362,41 +362,7 @@ bool Kyiv_t::execute_opcode(){
                 counter ++;
             }
 
-            magnetic_druelse if (mode == "assembly_mode") {
-        if (argc != 3) {
-            std::cerr << "Usage: " << argv[0] << " assembly_mode <file>" << std::endl;
-            return -1;
-        }
-
-        std::string inputFile = argv[2];
-        std::string outputFile = "../tempAsm.txt"; // Temporary output file
-
-        // Step 1: Parse Assembly File
-        Assembly assembler(std::ref(machine));
-        if (assembler.read_file(inputFile, /* numerate */ false) != 0) {
-            std::cerr << "Error: Failed to parse the assembly file." << std::endl;
-            return -1;
-        }
-
-        // Step 2: Execute the Commands
-        std::cout << "Executing parsed assembly..." << std::endl;
-        if (!assembler.execute()) { // Assuming `Assembly::execute` runs the commands
-            std::cerr << "Error: Failed to execute assembly instructions." << std::endl;
-            return -1;
-        }
-
-        // Step 3: Output the Results
-        std::ifstream output(outputFile);
-        if (output.is_open()) {
-            std::string line;
-            while (std::getline(output, line)) {
-                std::cout << line << std::endl; // Display the execution results
-            }
-            output.close();
-        } else {
-            std::cerr << "Error: Could not open output file for results." << std::endl;
-        }
-    }m.close();
+            magnetic_drum.close();
         }
             break;
 

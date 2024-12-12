@@ -12,10 +12,15 @@
 #include <QPushButton>
 #include <QThread>
 #include "emulator/kyiv.h"
+#include <QTabWidget>
+#include <QPushButton>
+#include <QTabBar>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+
 
 class MainWindow : public QMainWindow
 {
@@ -41,6 +46,9 @@ private:
     QPushButton *rungeKuttaBtn;
     QPushButton *sqrtAndFriendsBtn;
 
+    QWidget *drumsTab;
+    QWidget *instructionTab;
+
 
     int curr_takt = 0;
 
@@ -50,9 +58,19 @@ private:
     void InitControlPanel();
     void InitROMPanel();
     void InitASMDisASMPanel();
+    void createChartTab(const QString & outputText);
+    void InitTabs();
+    void addNewTab(QTabWidget *tabWidget);
+
+   // QString processAssemblyCode(const QString &inputCode);
+
+  //  QString generateChartFromOutput(const QString &output);
+
     void InitProgramsPanel();
     void InitPunchCardsPanel();
-    void InitDrumsPanel();
+    //void InitDrumsPanel();
+    void InitDrumsPanel(QVBoxLayout *drumsLayout);
+
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
@@ -81,6 +99,16 @@ public slots:
     void OnSqrtAndFriendsButtonClicked();
 
     void ReadProgram(const std::string& filepath);
+
+    void CreateOrSwitchToDrumsTab(QTabWidget *tabWidget);
+//QWidget *drumsTab;       // Pointer to the Drums tab
+     // Pointer to the Instruction tab
+
+    // Member Functions
+    //void Create//OrSwitchToDrumsTab(QTabWidget *tabWidget);       // Creates or switches to the Drums tab
+    void CreateOrSwitchToInstructionTab(QTabWidget *tabWidget);
+    void CreateInstructionTab(QTabWidget *tabWidget);
+    void CreateDrumsTab(QTabWidget *tabWidget);
 
 };
 #endif // MAINWINDOW_H

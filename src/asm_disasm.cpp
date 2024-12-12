@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <filesystem>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string.hpp>
 #include "kyiv.h"
@@ -78,45 +79,6 @@ std::map <std::string, std::string> ua_instructions = {
         {"останов",  "33"}
 };
 
-//int disassembly(const uint64_t & command_oct, Kyiv_memory & kmem) {
-//
-////    std::cout << command_oct << std::endl;
-//    std::ostringstream str;
-//    str << std::oct << command_oct;
-//    std::string command = str.str();
-//
-//    if (command.size() != 13 && command.size() != 14) {
-//        return -1;
-//    }
-//    if (command.size() != 14) {
-//        command.insert(0, "0");
-//    }
-//    std::string result;
-//    for (const auto & it : en_instructions) {
-//        if ( it.second == command.substr(0, 2) )
-//            result.append(it.first);
-//    }
-//    if (result.empty()) {
-//        for (const auto & it : ua_instructions) {
-//            if ( it.second == command.substr(0, 2) )
-//                result.append(it.first);
-//        }
-//    }
-//    if (result.empty()) {
-//        assert("Shouldn't be here!");
-//    }
-//    result.append(" " + command.substr(2, 4) + " " + command.substr(6, 4) + " " + command.substr(10, 4));
-//    word_t Addr_1_mask_shift = (40-6-11)+1;
-//    word_t Addr_1_mask = 0b11'111'111'111ULL << (Addr_1_mask_shift-1);
-//    word_t Addr_2_mask_shift = (40-6-12-11)+1;
-//    word_t Addr_2_mask = 0b11'111'111'111ULL << (Addr_2_mask_shift-1);
-//    std::string val1 = std::to_string((word_to_number(kmem[(command_oct & Addr_1_mask) >> Addr_1_mask_shift]) ));  //* std::pow(2, -40)
-//    std::string val2 = std::to_string(word_to_number(kmem[(command_oct & Addr_2_mask) >> Addr_2_mask_shift]));
-//    result.append("\t;; " + val1 + " " + val2);
-//    std::cout << result << std::endl;
-//    return 0;
-//}
-
 int disassembly(const uint64_t & command_oct, Kyiv_memory_t & kmem, const addr3_t &addr3) {
 
 //    std::cout << command_oct << std::endl;
@@ -142,7 +104,8 @@ int disassembly(const uint64_t & command_oct, Kyiv_memory_t & kmem, const addr3_
         }
     }
     if (result.empty()) {
-        assert("Shouldn't be here!");
+        std::cout << "Wrong input" << std::endl;
+        assert(false);
     }
     result.append(" " + command.substr(2, 4) + " " + command.substr(6, 4) + " " + command.substr(10, 4));
     word_t Addr_1_mask_shift = (40-6-11)+1;
@@ -156,7 +119,7 @@ int disassembly(const uint64_t & command_oct, Kyiv_memory_t & kmem, const addr3_
     std::string val2 = std::to_string(word_to_number(kmem.read_memory(addr3.source_2))) + "  " +
                        std::to_string(word_to_number(kmem.read_memory(addr3.source_2)) * std::pow(2, -40) );
     result.append("\t;; " + val1 + "\t" + val2);
-    std::cout << result << std::endl;
+    // std::cout << result << std::endl;
     addr_t a = (command_oct & Addr_2_mask) >> Addr_2_mask_shift;
 //    std::cout << "TRUE : " << std::bitset<41>(a) << std::endl;
 //    std::cout << "val2 : " << kmem.read_memory((command_oct & Addr_2_mask) >> Addr_2_mask_shift) << std::endl;
@@ -239,10 +202,9 @@ int disassembly_text(const std::string file_from, const std::string file_to) {
 //                            result.append(it.first);
 //                    }
 //                }
-                    if (result.empty()) {
-                        std::cout << "empty" << std::endl;
-                        assert(false);
-                    }
+            if (result.empty()) {
+                std::cout << "Wrong input" << std::endl;
+                assert(false);
             }
             program[address] = result;
         }
@@ -505,48 +467,160 @@ public:
         return 0;
     }
 };
+struct MemoryInput {
+    uint64_t address;
+    uint64_t value;
+};
 
 int main(int argc, char *argv[]) {
-    if (argc != 1) {
-        std::cerr << "Wrong arg" << std::endl;
+    std::ifstream infile("assembly");
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <mode> [arguments...]" << std::endl;
+        std::cerr << "Modes:" << std::endl;
+        std::cerr << "./kyivemu command <num1> <num2> <operation_code> " << std::endl;
+        std::cerr << "./kyivemu expression (<reg1>,<num1>) (<reg2>,<num2>) ... <C_reg> " << std::endl;
+        std::cerr<< "./kyivemu removable_memory <file> (<reg1>,<num1>) ... <C_reg> "<< std::endl;
+        std::filesystem::path docPath = std::filesystem::current_path() / "../documentation/documentation.txt";
+        std::cerr << "For a list of supported commands and detailed instructions, please refer to the documentation file: "
+                  << "<a href=\"file://" << docPath.string() << "\">documentation.txt</a>." << std::endl;
         return -1;
     }
-    // disassembly_text("../ROM.txt", "../rom_k.txt");
-//    std::cout << std::setprecision(10);
-//    disassembly_text(outputf, "../h.txt");
-//    Assembly as;
-//    as.read_file("../commans.txt", false);
+    std::string mode = argv[1];
     Kyiv_t machine;
-    machine.kmem.write_memory(00002, 659706976665);
-//    machine.kmem.write_memory(00010, 659706976665);
-//    machine.kmem.write_memory(00004, 762123384786);
-//    machine.kmem.write_memory(00001, 1);
-    std::cout <<  machine.kmem.read_memory(03067) << std::endl;
-    machine.C_reg = 03116;
-    while (machine.execute_opcode()) {
-        std::cout << "\tRES 0003: " << word_to_number(machine.kmem.read_memory(00003)) << " - " << word_to_number(machine.kmem.read_memory(00003))  * std::pow(2, -40) <<  std::endl;
+    if (mode == "command") {
+        if (argc != 5) {
+            std::cerr << "Usage: " << argv[0] << " command <num1> <num2> <operation_code> " << std::endl;
+            return -1;
+        }
 
+        word_t num1 = std::stoull(argv[2]);
+        word_t num2 = std::stoull(argv[3]);
+        opcode_t operation_code = std::stoi(argv[4]);
+
+        machine.kmem.write_memory(00001, num1);
+        machine.kmem.write_memory(00002, num2);
+
+        word_t command = (static_cast<word_t>(operation_code) << 36) // Код операції
+                         | (00001ULL << 24)                          // Адреса першого числа
+                         | (00002ULL << 12)                          // Адреса другого числа
+                         | 00003;                                    // Адреса результату
+
+        machine.kmem.write_memory(00004, command);
+
+        machine.C_reg = 00004;
+
+        while (machine.execute_opcode()) {
+            std::cout << "Result: "
+                      << word_to_number(machine.kmem.read_memory(00003)) * pow(2, -40)
+                      << "\n\n";
+        }
+
+    } else if (mode == "expression") {
+        std::vector<MemoryInput> memoryInputs;
+
+        for (int i = 2; i < argc - 1; ++i) {
+            std::string arg(argv[i]);
+            if (arg.front() != '(' || arg.back() != ')') {
+                std::cerr << "Invalid format for argument: " << arg << std::endl;
+                return -1;
+            }
+
+            arg = arg.substr(1, arg.size() - 2);
+            size_t commaPos = arg.find(',');
+            if (commaPos == std::string::npos) {
+                std::cerr << "Invalid format for argument: " << arg << std::endl;
+                return -1;
+            }
+
+            word_t address = std::stoull(arg.substr(0, commaPos));
+            word_t value = std::stoull(arg.substr(commaPos + 1));
+            memoryInputs.push_back({address, value});
+        }
+
+        for (const auto& input : memoryInputs) {
+            machine.kmem.write_memory(input.address, input.value);
+            std::cout << "Memory updated: Register " << input.address << " <- " << input.value << std::endl;
+        }
+
+        machine.C_reg = std::stoull(argv[argc - 1], nullptr, 8);
+
+        while (machine.execute_opcode()) {
+            std::cout << "Result: "<<
+                       word_to_number(machine.kmem.read_memory(00003)) * pow(2, -40)<<"\n"
+
+                      << "\n\n";
+        }
+
+
+    } else if (mode == "removable_memory") {
+        if (argc < 4) {
+            std::cerr << "Usage: " << argv[0] << " removable_memory <file> (<reg1>,<num1>) ... <C_reg>" << std::endl;
+            return -1;
+        }
+
+        std::string file = "../libs/" + std::string(argv[2]);
+        std::ifstream infile(file);
+        if (!infile) {
+            std::cerr << "Error: Unable to open file " << file << std::endl;
+            return -1;
+        }
+
+        std::string line;
+        while (std::getline(infile, line)) {
+            line.erase(remove_if(line.begin(), line.end(), isspace), line.end());
+            if (line.empty()) continue;
+
+            std::ostringstream str;
+            str << std::oct << line;
+            std::string data = str.str();
+            if (data.size() < 5) continue;
+
+            std::string address = data.substr(0, 4);
+            data = data.substr(4);
+            if (data.size() != 13 && data.size() != 14) {
+                continue;
+            }
+            if (data.size() != 14) {
+                data.insert(0, "0");
+            }
+            machine.kmem.write_rom(std::stoi(address, nullptr, 8), std::stol(data, nullptr, 8));
+        }
+
+        std::vector<MemoryInput> memoryInputs;
+        for (int i = 3; i < argc - 1; ++i) {
+            std::string arg(argv[i]);
+            if (arg.front() != '(' || arg.back() != ')') {
+                std::cerr << "Invalid format for argument: " << arg << std::endl;
+                return -1;
+            }
+
+            arg = arg.substr(1, arg.size() - 2);
+            size_t commaPos = arg.find(',');
+            if (commaPos == std::string::npos) {
+                std::cerr << "Invalid format for argument: " << arg << std::endl;
+                return -1;
+            }
+
+            word_t address = std::stoull(arg.substr(0, commaPos));
+            word_t value = std::stoull(arg.substr(commaPos + 1));
+            memoryInputs.push_back({address, value});
+        }
+
+        for (const auto& input : memoryInputs) {
+            machine.kmem.write_memory(input.address, input.value);
+            std::cout << "Memory updated: Register " << input.address << " <- " << input.value << std::endl;
+        }
+
+        machine.C_reg = std::stoull(argv[argc - 1], nullptr, 8);
+
+        while (machine.execute_opcode()) {
+            std::cout << "Result: "
+                      << word_to_number(machine.kmem.read_memory(00003)) * pow(2, -40)
+                      << "\n\n";
+        }
+    }else {
+        std::cerr << "Unknown mode: " << mode << std::endl;
+        return -1;
     }
-
-    std::cout << "\tRES 0004: " << word_to_number(machine.kmem.read_memory(00004)) << " - " << word_to_number(machine.kmem.read_memory(00004))  * std::pow(2, -40) <<  std::endl;
-
-//    as.execute(machine, 2);
-//    std::string result;
-//
-//    write_file(outputf, result);
-//
-//
-//    // machine.kmem[0001] = 0'12'0016'0003'0016ULL;
-//    machine.kmem[0001] = 0'21'0002'0010'0000ULL;
-//    machine.kmem[0012] = 549755813888;
-//    machine.kmem[0013] = 16;
-//    // machine.kmem[0016] = 9;
-//    machine.C_reg = 2;
-//
-//
-//    while (machine.execute_opcode()) {
-//        std::cout << "\tRES: " << machine.kmem[0014] << " - " << machine.kmem[0014] * std::pow(2, -40) <<  std::endl;
-//    }
-//    std::cout << "RES: " << machine.kmem[0014] << " - " << machine.kmem[0014] * std::pow(2, -40) <<  std::endl;
     return 0;
 }

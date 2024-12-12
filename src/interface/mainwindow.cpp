@@ -11,6 +11,7 @@
 #include "emulator/asm_disasm.h"
 #include <unistd.h>
 #include <QSlider>
+#include "emulator/asm_disasm.h"
 #include <QSpinBox>
 #include <QGroupBox>
 #include <QPushButton>
@@ -19,14 +20,76 @@
 #include <QDir>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrent>
+#include <QTabWidget>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QWidget>
+#include <QTabBar>
+#include <QGroupBox>
+#include <QPushButton>
+#include <QTextEdit>
+#include <QFileDialog>
+#include <QDir>
+#include <QFuture>
+#include <QtConcurrent/QtConcurrent>
 
+#include <QTableView>
+#include <QStandardItemModel>
 /* Window constructor
  * Initialize
 */
+//MainWindow::MainWindow(QWidget *parent)
+//    : QMainWindow(parent)
+//    , ui(new Ui::MainWindow) {
+//    ui->setupUi(this);
+//
+//    /* Some basic initializations */
+//    setMinimumSize(1600, 800);
+//    setWindowTitle("ЕОМ \"Київ\"");
+//    scrollArea = new QScrollArea(this);
+//    widget = new QWidget;
+//    kyivLay = new QVBoxLayout();
+//    panelAndCode = new QHBoxLayout();
+//    mainLay = new QVBoxLayout();
+//    setCentralWidget(scrollArea);
+//
+//    /* Some language fixes, needed for asm/disasm section */
+//    QLocale curLocale(QLocale("C"));
+//    QLocale::setDefault(curLocale);
+//    std::setlocale(LC_ALL, "C");
+//
+//    /* Init all panels */
+//    InitSignalPanel();
+//    InitControlPanel();
+//    InitROMPanel();
+//    InitASMDisASMPanel();
+//    InitProgramsPanel();
+//    InitPunchCardsPanel();
+//    InitDrumsPanel();
+//
+//    widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+//
+//    panelAndCode->addLayout(mainLay);
+//    kyivLay->addLayout(panelAndCode);
+//    widget->setLayout(kyivLay);
+//    scrollArea->setWidgetResizable(true);
+//    scrollArea->setWidget(widget);
+////    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+////    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+//
+//}
+//
+
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow) {
+    : QMainWindow(parent), ui(new Ui::MainWindow), drumsTab(nullptr), instructionTab(nullptr) {
     ui->setupUi(this);
+
+    QTabWidget *tabWidget = new QTabWidget(this);
+    setCentralWidget(tabWidget);
+    tabWidget->setTabsClosable(true);
+
+    QWidget *mainPage = new QWidget();
+    QVBoxLayout *mainPageLayout = new QVBoxLayout(mainPage);
 
     /* Some basic initializations */
     setMinimumSize(1600, 800);
@@ -36,7 +99,6 @@ MainWindow::MainWindow(QWidget *parent)
     kyivLay = new QVBoxLayout();
     panelAndCode = new QHBoxLayout();
     mainLay = new QVBoxLayout();
-    setCentralWidget(scrollArea);
 
     /* Some language fixes, needed for asm/disasm section */
     QLocale curLocale(QLocale("C"));
@@ -50,25 +112,313 @@ MainWindow::MainWindow(QWidget *parent)
     InitASMDisASMPanel();
     InitProgramsPanel();
     InitPunchCardsPanel();
-    InitDrumsPanel();
 
     widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
     panelAndCode->addLayout(mainLay);
     kyivLay->addLayout(panelAndCode);
     widget->setLayout(kyivLay);
+
     scrollArea->setWidgetResizable(true);
     scrollArea->setWidget(widget);
-//    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-//    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
+    mainPageLayout->addWidget(scrollArea);
+
+    QPushButton *readInstructionButton = new QPushButton("Read Instruction");
+    readInstructionButton->setFixedSize(200, 40); // Adjust button size
+    readInstructionButton->setStyleSheet(
+        "background-color: #ADD8E6; "
+        "border: 1px solid #000; "
+        "border-radius: 10px; "
+        "font-size: 16px; "
+        "padding: 5px;");
+    mainPageLayout->addWidget(readInstructionButton, 0, Qt::AlignCenter);
+    mainPage->setLayout(mainPageLayout);
+
+    tabWidget->addTab(mainPage, "Main Page");
+    CreateInstructionTab(tabWidget);
+    connect(tabWidget, &QTabWidget::tabCloseRequested, [this, tabWidget](int index) {
+        if (index == 0) {
+            return;
+        }
+        if (tabWidget->widget(index) == instructionTab) {
+            instructionTab = nullptr;
+        }
+        if (tabWidget->widget(index) == drumsTab) {
+            drumsTab = nullptr;
+        }
+
+        QWidget *tab = tabWidget->widget(index);
+        tabWidget->removeTab(index);
+        delete tab;
+    });
+
+    connect(readInstructionButton, &QPushButton::clicked, this, [this, tabWidget]() {
+        CreateOrSwitchToInstructionTab(tabWidget);
+    });
+
+    QPushButton *drumsButton = new QPushButton("Drums", this);
+    mainLay->addWidget(drumsButton);
+
+    connect(drumsButton, &QPushButton::clicked, this, [this, tabWidget]() {
+        CreateOrSwitchToDrumsTab(tabWidget);
+    });
 }
 
-MainWindow::~MainWindow()
-{
+void MainWindow::CreateDrumsTab(QTabWidget *tabWidget) {
+
+    if (!drumsTab) {
+        drumsTab = new QWidget();
+        QVBoxLayout *drumsLayout = new QVBoxLayout(drumsTab);
+        QScrollArea *drumsScrollArea = new QScrollArea(drumsTab);
+        QWidget *drumsContent = new QWidget();
+        QVBoxLayout *drumsContentLayout = new QVBoxLayout(drumsContent);
+        InitDrumsPanel(drumsContentLayout);
+
+        drumsContent->setLayout(drumsContentLayout);
+        drumsScrollArea->setWidget(drumsContent);
+        drumsScrollArea->setWidgetResizable(true);
+
+        drumsLayout->addWidget(drumsScrollArea);
+        drumsTab->setLayout(drumsLayout);
+
+        // Add the Drums tab to the tab widget
+        tabWidget->addTab(drumsTab, "Drums");
+    }
+}
+
+void MainWindow::CreateOrSwitchToDrumsTab(QTabWidget *tabWidget) {
+    CreateDrumsTab(tabWidget);
+    tabWidget->setCurrentWidget(drumsTab);
+}
+
+void MainWindow::CreateInstructionTab(QTabWidget *tabWidget) {
+    if (!instructionTab) {
+        instructionTab = new QWidget();
+        QVBoxLayout *instructionLayout = new QVBoxLayout(instructionTab);
+        instructionTab->setStyleSheet("background-color: #CCFFCC;");
+        QLabel *header = new QLabel("Kyiv emulator guide");
+        QFont headerFont("Arial", 18, QFont::Bold);
+        header->setFont(headerFont);
+        header->setAlignment(Qt::AlignTop | Qt::AlignHCenter); // Center at the top
+        instructionLayout->addWidget(header);
+
+        // Create a scroll area for the long text content
+        QScrollArea *scrollArea = new QScrollArea(instructionTab);
+        scrollArea->setWidgetResizable(true);
+        QWidget *scrollContent = new QWidget();
+        QVBoxLayout *scrollLayout = new QVBoxLayout(scrollContent);
+        QLabel *introText = new QLabel(
+            "Welcome to Kyiv emulator!\n\n"
+            "Switch to main page if you want to start.\n\n"
+            "Main page consists of such parts:"
+        );
+        introText->setWordWrap(true);
+        introText->setFont(QFont("Arial", 12));
+        scrollLayout->addWidget(introText);
+
+        QLabel *signalizationPanelText = new QLabel(
+            "1. Signalization panel\n"
+            "It demonstrates the inner work of \"Kyiv\" at the time of command execution.\n\n"
+            "The first row shows binary result of the command execution - data that is written to the third address of the command.\n"
+            "The second row shows the content of the number register - the number that is transported from or to a magnetic drum. Works with the commands 023 (write magnetic drum) or 024 (read magnetic drum).\n"
+            "The left part of third and forth rows (KOп) is a set of bulbs that are responsible for the executed opcode. When a command is executed, one of 29 bulbs lights up.\n"
+            "The bulb 'Тр Выб' ligths up if there is an exchange with punch tape, punch card or magnetic drum.\n"
+            "The middle part of the third row is the indicator of the address register - it works in the takt mode and shows the address of a certain takt's address.\n"
+            "The middle part of the forth row shows the content of the return register.\n"
+            "The bulb 'Тр Пр' light up if there is the command of jumps if the jump is made.\n"
+            "The last part of the third row is meant for takt control of 'Kyiv': it demonstrates the start and end of most important parts of command execution.\n"
+            "The last part of the forth row shows the content of the command counter register.\n"
+            "The fifth row shows the content of the command register in the binary-octal mode, usual for 'Kyiv' where first 5 bulbs stand for opcode, then each 12 represent first, second and third addresses respectively.\n"
+            "The sixth row shows the content of intrmediate register to which the content of number register is written.\n"
+            "The seventh row contains three parts. Unfortunately, we don't know the purpose of the most left one. The middle one contains the address register's contant, and the rigth part - the contant of the loop register. There are also three buttons: 'Нач' and 'Гот' for beginning and start of a command execution, and 'Авт' for the work of the machine in an automatic mode.\n"
+        );
+        signalizationPanelText->setWordWrap(true);
+        signalizationPanelText->setFont(QFont("Arial", 12));
+        scrollLayout->addWidget(signalizationPanelText);
+
+        QLabel *controlPanelText = new QLabel(
+            "2.Control panel\n"
+            "It emulates the work of the control panel, from which it is possible to change the settings of the machine, change ROM and execute an own command.\n\n"
+            "There is an upper and lower part of the panel."
+            "The upper part contains some of the set codes - three cells 03000-03002 of ROM which may be chosen by setting the first button on and choosing the values for each digit (in binary-octal) of three buttons.\n"
+            "The lower part contains some triggers, tumblers, addresses and command\n"
+        );
+        controlPanelText->setWordWrap(true);
+        controlPanelText->setFont(QFont("Arial", 12));
+        scrollLayout->addWidget(controlPanelText);
+
+        QLabel *romCodesText = new QLabel(
+            "3. Set codes of ROM (cells 03000 - 03007)\n"
+            "It contains the set codes - eight cells 03000-03007 of ROM. By default contains zeros. If one of the cells is chosen on the control panel, machine works with it, otherwise - with the cell from here."
+        );
+        romCodesText->setWordWrap(true);
+        romCodesText->setFont(QFont("Arial", 12));
+        scrollLayout->addWidget(romCodesText);
+
+        QLabel *assemblyInputText = new QLabel(
+            "4. Assembly input / opening from file\n"
+            "It contains two parts:\n\n"
+            "The place for assembler code. You can write code directly in the field or choose it from text file.\n"
+            "The place for assembled code. It is impossible to write there, it only shows the \"Kyiv\" direct commands from the assembler code after clicking on button \"Assembly\"."
+        );
+        assemblyInputText->setWordWrap(true);
+        assemblyInputText->setFont(QFont("Arial", 12));
+        scrollLayout->addWidget(assemblyInputText);
+
+        QLabel *magneticDrumsText = new QLabel(
+            "5.Punch cards -  a type of data storage medium used to input or output data in 'Kyiv'. you can load data from punch cards, delete them or save. \n"
+            "6.Drums: if you click 'drums' button, you can open a tab with three magnetic drums\n"
+            "\n\n"
+            "Now you can use the emulator!"
+        );
+        magneticDrumsText->setWordWrap(true);
+        magneticDrumsText->setFont(QFont("Arial", 12));
+        scrollLayout->addWidget(magneticDrumsText);
+
+        scrollContent->setLayout(scrollLayout);
+        scrollArea->setWidget(scrollContent);
+        instructionLayout->addWidget(scrollArea);
+
+        QPushButton *goToEmulatorButton = new QPushButton("Go to Emulator");
+        goToEmulatorButton->setFixedSize(200, 40);
+        goToEmulatorButton->setStyleSheet(
+            "background-color: #ADD8E6; "
+            "border: 1px solid #000; "
+            "border-radius: 10px; "
+            "font-size: 16px; "
+            "padding: 5px;");
+        instructionLayout->addWidget(goToEmulatorButton, 0, Qt::AlignCenter);
+
+        instructionTab->setLayout(instructionLayout);
+        tabWidget->insertTab(1, instructionTab, "Instruction");
+        connect(goToEmulatorButton, &QPushButton::clicked, this, [tabWidget]() {
+            tabWidget->setCurrentIndex(0);
+        });
+    }
+}
+
+void MainWindow::CreateOrSwitchToInstructionTab(QTabWidget *tabWidget) {
+    CreateInstructionTab(tabWidget);
+    tabWidget->setCurrentWidget(instructionTab);
+}
+
+//void MainWindow::InitTabs() {
+//    // Create a QTabWidget (main tab container)
+//    QTabWidget *tabWidget = new QTabWidget(this);
+//
+//    // Create the initial main tab (this could be a version of your main tab)
+//    QWidget *mainTab = new QWidget();
+//    QVBoxLayout *mainLayout = new QVBoxLayout(mainTab);
+//
+//    // Add some content to the main tab (for example, the assembler code area)
+//    QTextEdit *codeArea = new QTextEdit(mainTab);
+//    codeArea->setPlaceholderText("Введіть текст...");
+//    mainLayout->addWidget(codeArea);
+//
+//    // Add the main tab to the tab widget
+//    tabWidget->addTab(mainTab, "Project 1");
+//
+//    // Create a "+" button to add new tabs
+//    QPushButton *addTabButton = new QPushButton("+", this);
+//    addTabButton->setFixedSize(30, 30);
+//    addTabButton->setStyleSheet("background-color: lightgray; border: 1px solid black; border-radius: 5px; font-size: 20px;");
+//    tabWidget->setTabIcon(tabWidget->count(), addTabButton);  // Add "+" button to the tab list
+//
+//    // Connect the "+" button's click event to the function that adds a new tab
+//    connect(addTabButton, &QPushButton::clicked, this, [this, tabWidget]() {
+//        addNewTab(tabWidget);
+//    });
+//
+//    // Set the tabWidget as the central widget
+//    setCentralWidget(tabWidget);
+//}
+//
+//void MainWindow::addNewTab(QTabWidget *tabWidget) {
+//    // Create a new tab (another version of the main tab)
+//    QWidget *newTab = new QWidget();
+//    QVBoxLayout *newTabLayout = new QVBoxLayout(newTab);
+//
+//    // Add a copy of the main tab content to the new tab (e.g., a new code editor)
+//    QTextEdit *newCodeArea = new QTextEdit(newTab);
+//    newCodeArea->setPlaceholderText("Введіть текст...");
+//    newTabLayout->addWidget(newCodeArea);
+//
+//    // Add the new tab to the tab widget
+//    int newIndex = tabWidget->addTab(newTab, QString("Project %1").arg(tabWidget->count() + 1));
+//    tabWidget->setCurrentIndex(newIndex);  // Switch to the new tab
+//}
+//
+//
+//void MainWindow::CreateOrSwitchToDrumsTab(QTabWidget *tabWidget) {
+//    // Check if the Drums tab already exists
+//    if (!drumsTab) {
+//        drumsTab = new QWidget();  // Create a new tab widget
+//        QVBoxLayout *drumsLayout = new QVBoxLayout(drumsTab);  // New layout for the Drums tab
+//
+//        // Create a scroll area for the Drums tab
+//        QScrollArea *drumsScrollArea = new QScrollArea(drumsTab);
+//        QWidget *drumsContent = new QWidget();
+//        QVBoxLayout *drumsContentLayout = new QVBoxLayout(drumsContent);
+//
+//        // Add DrumsPanel content here
+//        InitDrumsPanel(drumsContentLayout); // Pass the layout for drums content
+//
+//        drumsContent->setLayout(drumsContentLayout);  // Set the content layout for the drums tab
+//        drumsScrollArea->setWidget(drumsContent);
+//        drumsScrollArea->setWidgetResizable(true);
+//
+//        drumsLayout->addWidget(drumsScrollArea);  // Add the scroll area to the Drums tab layout
+//        drumsTab->setLayout(drumsLayout);
+//
+//        // Add the Drums tab to the tab widget
+//        tabWidget->addTab(drumsTab, "Drums");
+//    }
+//
+//    // Switch to the Drums tab
+//    tabWidget->setCurrentWidget(drumsTab);
+//}
+
+void MainWindow::InitDrumsPanel(QVBoxLayout *drumsLayout) {
+    drumsLayout->addWidget(new QLabel("\n\nDRUMS"));
+
+    auto *drums = new QHBoxLayout();
+
+    /* Creating same widgets for 3 drums */
+    for (int j = 0; j < 3; j++) {
+        auto *lay = new QVBoxLayout();
+        for (size_t i = 0; i < 3288; i++) {
+            auto num = new QLineEdit();
+            num->setReadOnly(true);
+            num->setText("0");
+            num->setMinimumSize(400, 30);
+            num->setFont(QFont("Timers", 15, QFont::Bold));
+            switch (j) {
+                case 0: machine.drum1.push_back(num); break;
+                case 1: machine.drum2.push_back(num); break;
+                case 2: machine.drum3.push_back(num); break;
+                default:
+                    break;
+            }
+            lay->addWidget(num);
+        }
+
+        // Creating scrolling area for each of 3 drums
+        auto *sc = new QScrollArea();
+        auto *widget1 = new QWidget;
+
+        widget1->setLayout(lay);
+        sc->setWidget(widget1);
+        sc->setMinimumSize(400, 450);
+        drums->addWidget(sc);
+    }
+
+    drumsLayout->addLayout(drums);
+}
+
+
+MainWindow::~MainWindow() {
     delete ui;
 }
-
 void MainWindow::InitSignalPanel()
 {
     for (size_t row = 0; row < 7; ++row) {
@@ -603,6 +953,7 @@ void MainWindow::InitControlPanel() {
     lowControlBox->addItem(lowestRowButtons);
 
     mainLay -> addLayout(lowControlBox);
+
 }
 
 void MainWindow::InitROMPanel() {
@@ -664,44 +1015,50 @@ void MainWindow::InitROMPanel() {
     mainLay -> addLayout(romBox);
 }
 
-void MainWindow::InitASMDisASMPanel() {
-    mainLay->addWidget(new QLabel("\n\nDISASM | ASM"));
 
-    auto* asmDisasmBox = new QGroupBox();
+//void MainWindow::InitASMDisASMPanel() {
+//    mainLay->addWidget(new QLabel("\n\nDISASM | ASM"));
+//
+//    auto* asmDisasmBox = new QGroupBox();
+//    auto* asmDisasmLayout = new QVBoxLayout();
+//    asmDisasmBox->setLayout(asmDisasmLayout);
+//
+//    asmDisasmBox->setStyleSheet("QGroupBox { background-color: #E6E6FA; border: 1px solid black; }");
+//
+//    auto* textEditLayout = new QHBoxLayout();
+//    auto* asmButtonsLayout = new QHBoxLayout();
+//
+//    auto *codeArea = new QTextEdit(this);
+//    codeArea->setFontFamily("Ubuntu");
+//
+//    codeArea->setPlainText("Введіть асемблерний код, наприклад:\n\n.text\norg 0005\n\nadd 0001 0002 0003\nret 0000 0000 0000\n.data\norg 0001\n0.2\n0.4");
+//    codeArea->setStyleSheet("QTextEdit { color: grey; }");  // Light grey placeholder color
+//
+//    codeArea->installEventFilter(this);
+//
+//    // Output area (read-only QTextEdit)
+//    auto *asCodeArea = new QTextEdit(this);
+//    asCodeArea->setFontFamily("Ubuntu");
+//    asCodeArea->setReadOnly(true);
+//    asCodeArea->setMinimumSize(150, 300);
 
-    auto* asmDisasmLayout = new QVBoxLayout();
-    asmDisasmBox->setLayout(asmDisasmLayout);
+//    auto *assemblyBtn = new QPushButton();
+//    assemblyBtn->setText("ASSEMBLY");
+//    connect(assemblyBtn, SIGNAL(clicked()), this, SLOT(OnAssemblyButtonClicked()));
+//
+//    auto *openFileBtn = new QPushButton();
+//    openFileBtn->setText("OPEN FILE");
+//    connect(openFileBtn, SIGNAL(clicked()), this, SLOT(OnOpenDisasmFileButtonClicked()));
 
-    auto* textEditLayout = new QHBoxLayout();
-    auto* asmButtonsLayout = new QHBoxLayout();
-
-    auto *codeArea = new QTextEdit();
-    codeArea->setFontFamily("Ubuntu");
-
-
-    auto *asCodeArea = new QTextEdit();
-    asCodeArea->setFontFamily("Ubuntu");
-    asCodeArea->setReadOnly(true);
-    asCodeArea->setMinimumSize(150, 300);
-
-    auto *assemblyBtn = new QPushButton();
-    assemblyBtn->setText("ASSEMBLY");
-    connect(assemblyBtn, SIGNAL(clicked()), this, SLOT(OnAssemblyButtonClicked()));
-
-    auto *openFileBtn = new QPushButton();
-    openFileBtn->setText("OPEN FILE");
-    connect(openFileBtn, SIGNAL(clicked()), this, SLOT(OnOpenDisasmFileButtonClicked()));
-
-    textEditLayout->addWidget(codeArea);
-    textEditLayout->addWidget(asCodeArea);
-    asmDisasmLayout->addLayout(textEditLayout);
-    asmButtonsLayout->addWidget(openFileBtn);
-    asmButtonsLayout->addWidget(assemblyBtn);
-    asmDisasmLayout->addLayout(asmButtonsLayout);
-
-    mainLay->addWidget(asmDisasmBox);
-}
-
+//    textEditLayout->addWidget(codeArea);
+//    textEditLayout->addWidget(asCodeArea);
+//    asmDisasmLayout->addLayout(textEditLayout);
+//    asmButtonsLayout->addWidget(openFileBtn);
+//    asmButtonsLayout->addWidget(assemblyBtn);
+//    asmDisasmLayout->addLayout(asmButtonsLayout);
+//
+//    mainLay->addWidget(asmDisasmBox);
+//}
 void MainWindow::InitProgramsPanel() {
     mainLay->addWidget(new QLabel("\n\nPROGRAMS"));
 
@@ -721,6 +1078,8 @@ void MainWindow::InitProgramsPanel() {
 
     mainLay->addLayout(programsLayout);
 }
+
+
 
 void MainWindow::InitPunchCardsPanel() {
     mainLay->addWidget(new QLabel("\n\nPUNCHCARDS"));
@@ -754,48 +1113,44 @@ void MainWindow::InitPunchCardsPanel() {
     mainLay->addLayout(layout);
 }
 
-void MainWindow::InitDrumsPanel() {
-    mainLay->addWidget(new QLabel("\n\nDRUMS"));
-
-    panelAndCode ->addLayout(mainLay);
-
-    auto *drums = new QHBoxLayout();
-
-    /* Creating same widgets for 3 drums */
-    for (int j = 0; j < 3; j++) {
-        auto *lay = new QVBoxLayout();
-        for (size_t i = 0; i < 3288; i++) {
-            auto num = new QLineEdit();
-            num->setReadOnly(true);
-            num->setText("0");
-            num->setMinimumSize(400, 30);
-            num->setFont(QFont( "Timers" , 15 ,  QFont::Bold));
-            switch (j) {
-                case 0: machine.drum1.push_back(num); break;
-                case 1: machine.drum2.push_back(num); break;
-                case 2: machine.drum3.push_back(num); break;
-                default:
-                    break;
-            }
-            lay->addWidget(num);
-        }
-
-        // creating scrolling area for each of 3 drums
-        auto *sc = new QScrollArea();
-
-        // creating widgets area for each of 3 drums
-        auto *widget1=new QWidget;
-
-        widget1->setLayout(lay);
-        sc->setWidget(widget1);
-        sc->setMinimumSize(400, 450);
-        drums->addWidget(sc);
-    }
-
-    kyivLay->addLayout(panelAndCode);
-    kyivLay->addLayout(drums);
-}
-
+//void MainWindow::InitDrumsPanel() {
+//    mainLay->addWidget(new QLabel("\n\nDRUMS"));
+//
+//    panelAndCode ->addLayout(mainLay);
+//
+//    auto *drums = new QHBoxLayout();
+//
+//    for (int j = 0; j < 3; j++) {
+//        auto *lay = new QVBoxLayout();
+//        for (size_t i = 0; i < 3288; i++) {
+//            auto num = new QLineEdit();
+//            num->setReadOnly(true);
+//            num->setText("0");
+//            num->setMinimumSize(400, 30);
+//            num->setFont(QFont( "Timers" , 15 ,  QFont::Bold));
+//            switch (j) {
+//                case 0: machine.drum1.push_back(num); break;
+//                case 1: machine.drum2.push_back(num); break;
+//                case 2: machine.drum3.push_back(num); break;
+//                default:
+//                    break;
+//            }
+//            lay->addWidget(num);
+//        }
+//        auto *sc = new QScrollArea();
+//
+//        auto *widget1=new QWidget;
+//
+//        widget1->setLayout(lay);
+//        sc->setWidget(widget1);
+//        sc->setMinimumSize(400, 450);
+//        drums->addWidget(sc);
+//    }
+//
+//    kyivLay->addLayout(panelAndCode);
+//    kyivLay->addLayout(drums);
+//}
+//
 void MainWindow::OnSaveButtonClicked() {
     std::vector<std::string> argv;
 
@@ -934,19 +1289,290 @@ void MainWindow::OnOpenDisasmFileButtonClicked() {
     openFile.close();
 }
 
+void MainWindow::InitASMDisASMPanel() {
+    mainLay->addWidget(new QLabel("\n\nDISASM | ASM"));
+
+    auto* asmDisasmBox = new QGroupBox();
+    auto* asmDisasmLayout = new QVBoxLayout();
+    asmDisasmBox->setLayout(asmDisasmLayout);
+
+    asmDisasmBox->setStyleSheet("QGroupBox { background-color: #E6E6FA; border: 1px solid black; }");
+
+    auto* textEditLayout = new QHBoxLayout();
+    auto* asmButtonsLayout = new QHBoxLayout();
+
+    auto *codeArea = new QTextEdit(this);
+    codeArea->setFontFamily("Ubuntu");
+
+    codeArea->setPlaceholderText("Введіть текст, наприклад:\n\n.text\norg 0005\n\nadd 0001 0002 0003\nret 0000 0000 0000\n.data\norg 0001\n0.2\n0.4");
+    codeArea->setStyleSheet("QTextEdit { color: grey; }");  // Light grey placeholder color
+
+    auto *asCodeArea = new QTextEdit(this);
+    asCodeArea->setFontFamily("Ubuntu");
+    asCodeArea->setReadOnly(true);
+    asCodeArea->setMinimumSize(150, 300);
+
+    auto *assemblyBtn = new QPushButton();
+    assemblyBtn->setText("ASSEMBLY");
+    connect(assemblyBtn, SIGNAL(clicked()), this, SLOT(OnAssemblyButtonClicked()));
+
+    auto *openFileBtn = new QPushButton();
+    openFileBtn->setText("OPEN FILE");
+    connect(openFileBtn, SIGNAL(clicked()), this, SLOT(OnOpenDisasmFileButtonClicked()));
+
+    QPushButton *showAssemblerBtn = new QPushButton("Show Assembler Code");
+    showAssemblerBtn->setStyleSheet(
+        "background-color: #D3F9D8; "
+        "border: 1px solid black; "
+        "border-radius: 10px; "
+        "font-size: 16px; "
+        "padding: 5px;");
+    showAssemblerBtn->setFixedSize(200, 50);
+
+    connect(showAssemblerBtn, &QPushButton::clicked, this, [this, codeArea]() {
+        // Set the assembler code (example code)
+        codeArea->setPlainText(".text\norg 0005\n\nadd 0001 0002 0003\nret 0000 0000 0000\n.data\norg 0001\n0.2\n0.4");
+    });
+
+    textEditLayout->addWidget(codeArea);
+    textEditLayout->addWidget(asCodeArea);
+    asmDisasmLayout->addLayout(textEditLayout);
+    asmButtonsLayout->addWidget(openFileBtn);
+    asmButtonsLayout->addWidget(assemblyBtn);
+    asmDisasmLayout->addLayout(asmButtonsLayout);
+    asmDisasmLayout->addWidget(showAssemblerBtn);
+
+    mainLay->addWidget(asmDisasmBox);
+
+
+    auto *conversionLayout = new QVBoxLayout();
+
+auto *numToCmdLabel = new QLabel("Convert Kyiv command to assembly command:");
+auto *numToCmdLayout = new QHBoxLayout();
+auto *numInput = new QLineEdit();
+numInput->setPlaceholderText("Enter number (e.g., '01')");
+auto *numToCmdButton = new QPushButton("Find Command");
+auto *cmdOutput = new QLineEdit();
+cmdOutput->setReadOnly(true);
+cmdOutput->setPlaceholderText("Command name will appear here");
+
+numToCmdButton->setStyleSheet(
+    "QPushButton {"
+    "    background-color: #5cb85c;"
+    "    color: white;"
+    "    font-size: 14px;"
+    "    border-radius: 8px;"
+    "    padding: 4px 16px;"
+    "    min-width: 120px;"
+    "    min-height: 40px;"
+    "} "
+    "QPushButton:hover {"
+    "    background-color: #5cb85c;"
+    "}"
+);
+
+numToCmdLayout->addWidget(numInput);
+numToCmdLayout->addWidget(numToCmdButton);
+numToCmdLayout->addWidget(cmdOutput);
+
+connect(numToCmdButton, &QPushButton::clicked, this, [numInput, cmdOutput]() {
+    QString num = numInput->text();
+    auto it = std::find_if(en_instructions.begin(), en_instructions.end(),
+                           [&num](const auto &pair) { return QString::fromStdString(pair.second) == num; });
+    cmdOutput->setText(it != en_instructions.end() ? QString::fromStdString(it->first) : "Not found");
+});
+
+auto *cmdToNumLabel = new QLabel("Convert assembly command to Kyiv command:");
+auto *cmdToNumLayout = new QHBoxLayout();
+auto *cmdInput = new QLineEdit();
+cmdInput->setPlaceholderText("Enter command (e.g., 'add')");
+auto *cmdToNumButton = new QPushButton("Find Number");
+auto *numOutput = new QLineEdit();
+numOutput->setReadOnly(true);
+numOutput->setPlaceholderText("Number will appear here");
+
+cmdToNumButton->setStyleSheet(
+    "QPushButton {"
+    "    background-color: #5cb85c;"
+    "    color: white;"
+    "    font-size: 14px;"
+    "    border-radius: 8px;"
+    "    padding: 4px 16px;"
+    "    min-width: 120px;"
+    "    min-height: 40px;"
+    "} "
+    "QPushButton:hover {"
+    "    background-color: #4cae4c;"
+    "}"
+);
+
+cmdToNumLayout->addWidget(cmdInput);
+cmdToNumLayout->addWidget(cmdToNumButton);
+cmdToNumLayout->addWidget(numOutput);
+
+connect(cmdToNumButton, &QPushButton::clicked, this, [cmdInput, numOutput]() {
+    QString cmd = cmdInput->text();
+    auto it = en_instructions.find(cmd.toStdString());
+    numOutput->setText(it != en_instructions.end() ? QString::fromStdString(it->second) : "Not found");
+});
+
+conversionLayout->addWidget(numToCmdLabel);
+conversionLayout->addLayout(numToCmdLayout);
+conversionLayout->addSpacing(10);
+conversionLayout->addWidget(cmdToNumLabel);
+conversionLayout->addLayout(cmdToNumLayout);
+
+mainLay->addLayout(conversionLayout);
+
+}
+
+
+
+void MainWindow::createChartTab(const QString& outputText) {
+    QTabWidget *tabWidget = findChild<QTabWidget *>();
+    qDebug() << "Full output text: " << outputText;
+
+    QWidget *chartTab = new QWidget();
+    QVBoxLayout *chartLayout = new QVBoxLayout();
+    chartTab->setLayout(chartLayout);
+
+    QStringList lines = outputText.split('\n', Qt::SkipEmptyParts);
+
+    QStandardItemModel *model = new QStandardItemModel(lines.size(), 5, this);
+    model->setHorizontalHeaderLabels({"Opcode (Oct)", "Opcode (Hex)", "Opcode (Bin)", "Decimal Value", "Command or num*2^40"});
+
+    int row = 0;
+    int maxOctLength = 0;
+    int maxHexLength = 0;
+    int maxBinLength = 41;
+    int maxDecLength = 0;
+    int maxMultipliedLength = 0;
+
+    for (const QString &line : lines) {
+        QStringList tokens = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+        if (tokens.isEmpty()) continue;
+
+        bool ok;
+        uint64_t opcode;
+        QString oct, hex, bin, decValue, multipliedValue;
+
+        if (tokens[0].length() == 14) {
+            opcode = tokens[0].toULongLong(&ok, 8);
+            if (ok) {
+                oct = QString::number(opcode, 8);
+                hex = QString::number(opcode, 16).toUpper();
+                bin = QString::number(opcode, 2).rightJustified(maxBinLength, '0');
+                decValue = QString::number(opcode, 10);
+                multipliedValue = "";
+            }
+        } else {
+            QString decimalString = tokens[0];
+            opcode = decimalString.toULongLong(&ok, 10);
+
+            if (ok) {
+                double normalizedValue = static_cast<double>(opcode) / std::pow(2.0, 40);
+
+                oct = QString::number(opcode, 8);
+                hex = QString::number(opcode, 16).toUpper();
+                bin = QString::number(opcode, 2);
+
+                multipliedValue = decimalString;
+
+                decValue = QString::number(normalizedValue, 'f', 6);
+            }
+        }
+
+        if (ok) {
+            maxOctLength = std::max(maxOctLength, oct.length());
+            maxHexLength = std::max(maxHexLength, hex.length());
+            maxDecLength = std::max(maxDecLength, decValue.length());
+            maxMultipliedLength = std::max(maxMultipliedLength, multipliedValue.length());
+        }
+    }
+
+for (const QString &line : lines) {
+    QStringList tokens = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+    if (tokens.isEmpty()) continue;
+
+    bool ok;
+    uint64_t opcode;
+    QString oct, hex, bin, decValue, multipliedValue;
+
+    if (tokens[0].length() == 14) {
+        opcode = tokens[0].toULongLong(&ok, 8);
+        if (ok) {
+            oct = QString::number(opcode, 8).rightJustified(maxOctLength, '0');
+            hex = QString::number(opcode, 16).toUpper().rightJustified(maxHexLength, '0');
+            bin = QString::number(opcode, 2).rightJustified(maxBinLength, '0');
+            decValue = QString::number(opcode, 10).rightJustified(maxDecLength, '0');
+
+            // Extract the first two digits of the octal representation
+            QString firstTwoDigits = oct.left(2);
+
+
+            auto it = std::find_if(en_instructions.begin(), en_instructions.end(),
+                                   [&firstTwoDigits](const auto &pair) { return QString::fromStdString(pair.second) == firstTwoDigits; });
+
+            multipliedValue = it != en_instructions.end()
+                ? QString::fromStdString(it->first)
+                : ""; // Leave empty if not found
+        }
+    } else {
+        QString decimalString = tokens[0];
+        opcode = decimalString.toULongLong(&ok, 10);
+
+        if (ok) {
+            double normalizedValue = static_cast<double>(opcode) / std::pow(2.0, 40);
+
+            oct = QString::number(opcode, 8).rightJustified(maxOctLength, '0');
+            hex = QString::number(opcode, 16).toUpper().rightJustified(maxHexLength, '0');
+            bin = QString::number(opcode, 2).rightJustified(maxBinLength, '0');
+
+            multipliedValue = decimalString.rightJustified(maxMultipliedLength, '0');
+
+            // Adjust decValue to match max length with trailing zeros
+            QString decString = QString::number(normalizedValue, 'f', 6);
+            int additionalZeros = maxDecLength - decString.length();
+            if (additionalZeros > 0) {
+                decValue = decString + QString(additionalZeros, '0');
+            } else {
+                decValue = decString;
+            }
+        }
+    }
+
+    if (ok) {
+        model->setItem(row, 0, new QStandardItem(oct));
+        model->setItem(row, 1, new QStandardItem(hex));
+        model->setItem(row, 2, new QStandardItem(bin));
+        model->setItem(row, 3, new QStandardItem(decValue));
+        model->setItem(row, 4, new QStandardItem(multipliedValue));
+        row++;
+    }
+}
+
+    QTableView *tableView = new QTableView(chartTab);
+    tableView->setModel(model);
+    tableView->resizeColumnsToContents();
+    tableView->setMinimumHeight(300);
+    tableView->setMinimumWidth(1200);
+
+    chartLayout->addWidget(tableView);
+    tabWidget->addTab(chartTab, "Chart");
+    tabWidget->setCurrentIndex(tabWidget->indexOf(chartTab));
+}
+
+
 void MainWindow::OnAssemblyButtonClicked() {
     std::cout << "start" << std::endl;
     auto *codeArea = qobject_cast<QTextEdit *>(sender()->parent()->children().at(1));
     if (codeArea->toPlainText().isEmpty()) {
         return;
     }
-    std::cout << "start1" << std::endl;
 
     auto *asCodeArea = qobject_cast<QTextEdit *>(sender()->parent()->children().at(2));
 
     QFile tempDisasm("../tempDisasm.txt");
-    std::cout << "start2" << std::endl;
-
     if (tempDisasm.open(QFile::ReadWrite | QFile::Truncate)) {
         QTextStream stream(&tempDisasm);
         stream << codeArea->toPlainText();
@@ -955,22 +1581,50 @@ void MainWindow::OnAssemblyButtonClicked() {
         std::cout << "Unable to open disasm file";
     }
     tempDisasm.close();
-    std::cout << "start4" << std::endl;
 
     Assembly as(std::ref(machine));
     as.read_file("../tempDisasm.txt", false);
-    std::cout << "start5" << std::endl;
 
     QFile tempAsm(outputf);
+    QString outputText;
     if (tempAsm.open(QFile::ReadOnly)) {
         QTextStream ReadFile(&tempAsm);
-        asCodeArea->setText(ReadFile.readAll());
+        outputText = ReadFile.readAll();
+        asCodeArea->setText(outputText);
     } else {
         std::cout << "Unable to open asm file";
     }
     tempAsm.close();
+
     size_t start = 03600;
     QFuture<void> future = QtConcurrent::run(as, &Assembly::execute);
+
+
+
+    QPushButton *viewChartBtn = new QPushButton("View Chart");
+
+
+    viewChartBtn->setStyleSheet(
+        "background-color: #D3F9D8; "
+        "border: 1px solid black; "
+        "border-radius: 10px; "
+        "font-size: 16px; "
+        "padding: 5px;");
+
+    viewChartBtn->setFixedSize(200, 50);
+
+    connect(viewChartBtn, &QPushButton::clicked, this, [this, outputText]() {
+        createChartTab(outputText);
+    });
+
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+  //  buttonLayout->addStretch(2);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(viewChartBtn);
+
+    QVBoxLayout *parentLayout = qobject_cast<QVBoxLayout *>(asCodeArea->parentWidget()->layout());
+    parentLayout->addLayout(buttonLayout);
+
 }
 
 void MainWindow::OnSaveROMButtonClicked() {

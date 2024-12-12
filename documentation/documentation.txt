@@ -1,0 +1,187 @@
+You can use this machine in 3 modes:
+1. Command mode:
+./kyivemu command <num1> <num2> <operation_code>
+where <num1> and <num2> are numbers in Kyive format x*2^(40) and <operation_code> is one of commands:
+Arithmetic operations:
+01 - addition
+02 - subtraction
+03 - addition of commands
+06 - modulus substraction
+07 - cyclical addition
+10 - multiplication without rounding
+11 - multiplication with rounding
+12 - division
+
+Logical operations:
+13 - logical shift
+14 - digital logical addition
+15 - digital logical multiplication
+17 - digital logical operation nonequivalence
+35 - normalization
+
+Control transfer operations:
+04 - conditional transfer of control based on the relation ≤
+05 - conditional transfer of control based on the relation ≤ of module values
+16 - conditional transfer of control based on equality of СрЗ (exact match)
+30 - conditional jump to a subroutine УПП
+31 - conditional transfer of control based on the sign of a number УПЧ
+32 - return
+
+Modification of addresses:
+26 - beginig of a group operation
+27 - end of a group operation
+34 - call on the retainer (F)
+
+Input/Output:
+20 - input of data from punched card
+21 - input of command from punched card
+22 - output to punched card
+23 - write to magnetic drum
+24 - read from magnetic drum
+25 - init magnetic dram
+33 - stop
+
+2. Expression mode:
+./kyivemu expression "(<reg1>,<num1>)" "(<reg2>,<num2>)" ... <C_reg>
+where <num1> and <num2> are numbers in Kyive format x*2^(40), <reg1> and <reg2> are registers
+and <C_reg> is the register from which we will sturt our operration.
+In this mode we can:
+1. Сonvert numbers from binary to decimal in range (-1,1)
+We need to put our number in register 0002 and C_reg needs to be 3100
+
+2. Calculate 0.5 * sin(x) in range (-1,1)
+Where reg1 = 0002 num1 = x and C_reg = 3152
+
+3. Calculate 0.5 * cos(x) in range (-1,1)
+Where reg1 = 0002 num1 = x and C_reg = 3147
+
+4. Calculate 0.5 * sin(x) in range (-2pi,2pi)
+Where reg1 = 0002 num1 = x/(2pi) and C_reg = 3264
+
+5. Calculate 0.5 * cos(x) in range (-2pi,2pi)
+Where reg1 = 0002 num1 = x/(2pi) and C_reg = 3217
+
+6. Calculate 1/n * ln(x) in range (0,1)
+Where reg1 = 0002 num1 = x, reg2 = 0004 num2 = 1/n and C_reg = 3116
+
+7. Calculate sqrt(x) in range (2^(-22),1)
+Where reg1 = 0002 num1 = x and C_reg = 3163
+
+8. Calculate 0.25 * e^(x) in range (-1,1)
+Where reg1 = 0002 num1 = x and C_reg = 3202
+
+9. Calculate 1/pi * arcsin(x) in range (-1,1)
+Where reg1 = 0002 num1 = x and C_reg = 3242
+
+10. Calculate 1/pi * arccos(x) in range (-1,1)
+Where reg1 = 0002 num1 = x and C_reg = 3244
+
+3. Removable memory mode:
+./kyivemu removable_memory <file> "(<reg1>,<num1>)" "(<reg2>,<num2>)"  ... <C_reg>
+where <file> is the path to the file with commands you can find this files(3) in folder libs
+and you need just to write the name of file, which you want to use,
+<num1> and <num2> are numbers in Kyive format x*2^(40), <reg1> and <reg2> are registers
+and <C_reg> is the register from which we will sturt our operration.
+In this mode we can:
+1. Calculate sqrt(x) in range (0,1)
+Where file= sqrt_and_friends, reg1 = 0002 num1 = x and C_reg = 3300
+!remark: answer is correct, but multiplied by 0.25
+
+2. Calculate product of two vectors
+Where file= sqrt_and_friends, reg1 = 0002 num1 = vector clamp, reg2 = 0004 num2 = vector clamp and C_reg = 3320
+
+3. Multiplying a square matrix by a vector
+Where file= sqrt_and_friends, reg1 = 0002 num1 = sequence lock, which defines the row-wise order of the matrix,
+reg2 = 0004 num2 = sequence lock that defines the order of the vector and C_reg = 3334
+
+4. Calculate 0.25 * a^(x)
+Where file= sqrt_and_friends, reg1 = 0010 num1 = x, reg2 = 0007 num2 = a and C_reg = 3360
+
+5. Calculate Runge-Kutta method
+Where file= runge_kutta.txt, reg1 = 3000 num1 = 2h, reg2 = 3001 num2 = x₀,
+reg3 = 3002 num3 = xₘₐₓ, reg4= 3004 num4 = t, reg5 = 3005 num5 = a and C_reg = 3600
+! Pay attention commands 3000-3007 are instruction codes (наборные коды)
+
+Standart programs:
+1. Binary to Decimal Conversion:
+Converts binary numbers at address 0002 into decimal and places the result at 0003.
+Uses addresses 0002–0005 as working memory. Does not use group operations. Requires 9 instructions.
+
+2. Integer Binary to Decimal Conversion:
+Similar to the above but processes integers stored in the second address of cell 0002.
+Outputs the result as text. Requires 23 instructions and addresses 0002, 0003.
+
+3. Group Binary to Decimal Conversion:
+Processes and prints a group of binary numbers defined by an a-sequence starting at address 0002.
+Preserves the sequence content. Requires 18 instructions and addresses 0003–0007.
+
+4. Group Conversion with Group Printing Mode:
+Outputs converted numbers to an a-sequence, which can be the same as the input sequence.
+The second sequence's starting address is 0003. Uses group operations, requiring 26 instructions and addresses 0003–0011.
+
+5. Program Error Correction:
+Records correct codes and addresses in an a-sequence for corrections:
+First code and its address, second code and its address, etc.
+Address 3006 stores the first and last sequence addresses.
+Requires 10 instructions, addresses 0002–0005, and the Ф operation.
+
+6. Sine Calculation (Taylor Series):
+Computes sine for −1<x<1 with 9–10 digit precision. Uses addresses 0004–0011 without group operations.
+Preserves address 0002. Requires 20 instructions.
+
+7. Tangent and Cotangent Calculation:
+Computes tan(x) for x<0 and cot(x) for x>0. Results are placed at:
+0003 for the value,
+0004 for the type (+0 for tan(x), −0 for cot(x)).
+Requires 21 instructions, addresses 0005–0007, and no group operations.
+
+8. Arctangent Calculation:
+Computes arctan(x) for −1<x<1 using a best-fit polynomial
+Preserves address 0002. Requires 17 instructions and group operations.
+
+10. Natural Logarithm Calculation (ln(x)):
+Computes ln(x) for 0<x<1. Uses 34 instructions and addresses 0002, 0003.
+Offers higher precision than built-in programs.
+
+11. Determinant Calculation for n-th Order Matrices:
+Computes the determinant of a matrix defined by an a-sequence starting at address 0002.
+If 0004 < 0, the determinant equals 0003. If 0004 > 0, it equals 0003 * 0004.
+Maximum order: 25. Requires 121 instructions and uses operation Ф.
+
+12. Transposing a Rectangular Matrix:
+Transposes a matrix provided as an a-sequence with marker 0002.
+Rows and columns are stored at the first two addresses.
+Outputs the transposed matrix as an a-sequence with marker 0003.
+Requires 18 instructions, addresses 0004–0011, and operation Ф.
+
+13. Linear Combination of Vectors:
+Computes the linear combination of vectors stored in an a-sequence (marker 0003)
+with coefficients in a p-sequence (marker 0003).
+Outputs the result in an a-sequence while preserving the original data.
+Requires 20 instructions, addresses 0002–0012, and operation Ф.
+
+14. Matrix and Vector Multiplication:
+Multiplies matrices or vectors stored as a-sequences with markers 0002 (first matrix/vector)
+and 0004 (second matrix/vector).
+Outputs the result in an a-sequence with marker 0003.
+Requires 35 instructions, addresses 0002–0014, and operation Ф.
+
+15. Matrix and Vector Multiplication with Scaling (I):
+Multiplies vectors or matrices stored as a-sequences, applying scaling to matrix elements.
+Outputs the result as an a-sequence with marker 0003.
+First and second addresses contain row and column counts, followed by scaled elements.
+Requires 43 instructions, addresses 0002–0015, and operation Ф.
+
+16. Matrix and Vector Multiplication with Scaling (II):
+Similar to the first scaling variant, but uses a single global scaling factor for the resulting matrix.
+Outputs the matrix in an a-sequence (marker 0003) and the scaling factor at address 0016.
+Requires 48 instructions, addresses 0002–0017, and operation Ф.
+
+17. Scalar Product of Vectors:
+Computes the scalar product of two vectors stored in a-sequences (markers 0002 and 0004).
+Outputs the result at address 0003. Requires 12 instructions, addresses 0005–0007, and operation Ф.
+
+18. Multiplication of a Square Matrix and Vector:
+Multiplies a square matrix (a-sequence with marker 0002) by a vector (marker 0004).
+Outputs the resulting vector with marker 0003.
+Requires 20 instructions, addresses 0005–0015, and operation Ф.
